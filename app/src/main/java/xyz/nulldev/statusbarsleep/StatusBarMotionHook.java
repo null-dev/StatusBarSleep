@@ -6,16 +6,21 @@ import de.robv.android.xposed.XC_MethodHook;
 
 public class StatusBarMotionHook extends XC_MethodHook {
 
-    private BasicStatusBarSleepImpl parent;
+    private final BasicStatusBarSleepImpl parent;
+    private final boolean fromStatusBar;
 
-    public StatusBarMotionHook(BasicStatusBarSleepImpl parent) {
+    public StatusBarMotionHook(BasicStatusBarSleepImpl parent, boolean fromStatusBar) {
         this.parent = parent;
+        this.fromStatusBar = fromStatusBar;
     }
 
     @Override
     protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
         if (parent.getGestureDetector() != null) {
-            parent.getGestureDetector().onTouchEvent((MotionEvent) param.args[0]);
+            MotionEvent event = (MotionEvent) param.args[0];
+            if(event != null) {
+                parent.getGestureDetector().onTouchEvent(event, fromStatusBar);
+            }
         }
     }
 }

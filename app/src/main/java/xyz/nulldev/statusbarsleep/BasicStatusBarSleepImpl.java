@@ -13,12 +13,13 @@ import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
+import xyz.nulldev.statusbarsleep.gesture.ExtendedGestureDetector;
 
 public class BasicStatusBarSleepImpl implements StatusBarSleepImpl {
 
     private final String viewClass;
     private final String notificationViewClass;
-    private GestureDetector gestureDetector = null;
+    private ExtendedGestureDetector gestureDetector = null;
     private PowerManager powerManager = null;
     private Object statusBarManager = null;
     private Method closeStatusBarMethod = null;
@@ -107,25 +108,28 @@ public class BasicStatusBarSleepImpl implements StatusBarSleepImpl {
         }
     }
 
-    private GestureDetector createGestureDetector(final Context context) {
-        return new GestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
+    private ExtendedGestureDetector createGestureDetector(final Context context) {
+        return new ExtendedGestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onDoubleTap(MotionEvent e) {
-                goToSleep();
+                //Make sure first event is from the status bar
+                if(gestureDetector.isLastActionFromStatusBar()) {
+                    goToSleep();
+                    gestureDetector.resetTapStates();
+                }
                 return true;
             }
         });
     }
 
     private void hookTouchEvent(Class<?> statusBarClass, Class<?> notificationClass) {
-        StatusBarMotionHook hook = new StatusBarMotionHook(this);
-        XposedHelpers.findAndHookMethod(statusBarClass, "onTouchEvent", MotionEvent.class, hook);
+        XposedHelpers.findAndHookMethod(statusBarClass, "onTouchEvent", MotionEvent.class, new StatusBarMotionHook(this, true));
         if(notificationClass != null) {
-            XposedHelpers.findAndHookMethod(notificationClass, "onTouchEvent", MotionEvent.class, hook);
+            XposedHelpers.findAndHookMethod(notificationClass, "onTouchEvent", MotionEvent.class, new StatusBarMotionHook(this, false));
         }
     }
 
-    public GestureDetector getGestureDetector() {
+    public ExtendedGestureDetector getGestureDetector() {
         return gestureDetector;
     }
 }
