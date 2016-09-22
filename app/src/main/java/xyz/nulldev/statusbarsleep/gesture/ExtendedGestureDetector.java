@@ -5,7 +5,7 @@ import android.os.Handler;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 
-import de.robv.android.xposed.XposedBridge;
+import xyz.nulldev.statusbarsleep.BuildConfig;
 
 public class ExtendedGestureDetector extends GestureDetector {
 
@@ -34,30 +34,33 @@ public class ExtendedGestureDetector extends GestureDetector {
     }
 
     public boolean onTouchEvent(MotionEvent ev, boolean fromStatusBar) {
-        int action = ev.getActionMasked();
-        //Ignore events that are from the notification bar but the status bar is still being held on
-        if(!fromStatusBar && statusBarDown) {
-            return false;
-        } else if(!fromStatusBar && !notificationBarDown && action != MotionEvent.ACTION_DOWN) {
-            return false;
-        }
-        boolean handled = super.onTouchEvent(ev);
-        if(action == MotionEvent.ACTION_DOWN) {
-            if(fromStatusBar) {
-                statusBarDown = true;
-            } else {
-                notificationBarDown = true;
+        if(BuildConfig.ENABLE_EXTENDED_TAP_TARGETS) {
+            return super.onTouchEvent(ev);
+        } else {
+            int action = ev.getActionMasked();
+            //Ignore events that are from the notification bar but the status bar is still being held on
+            if (!fromStatusBar && statusBarDown) {
+                return false;
+            } else if (!fromStatusBar && !notificationBarDown && action != MotionEvent.ACTION_DOWN) {
+                return false;
             }
-            lastActionFromStatusBar = fromStatusBar;
-        } else if(action == MotionEvent.ACTION_UP) {
-            if(fromStatusBar) {
-                statusBarDown = false;
-            } else {
-                notificationBarDown = false;
+            boolean handled = super.onTouchEvent(ev);
+            if (action == MotionEvent.ACTION_DOWN) {
+                if (fromStatusBar) {
+                    statusBarDown = true;
+                } else {
+                    notificationBarDown = true;
+                }
+                lastActionFromStatusBar = fromStatusBar;
+            } else if (action == MotionEvent.ACTION_UP) {
+                if (fromStatusBar) {
+                    statusBarDown = false;
+                } else {
+                    notificationBarDown = false;
+                }
             }
+            return handled;
         }
-
-        return handled;
     }
 
     public boolean isLastActionFromStatusBar() {

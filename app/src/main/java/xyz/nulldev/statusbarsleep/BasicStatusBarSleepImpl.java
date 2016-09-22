@@ -48,27 +48,7 @@ public class BasicStatusBarSleepImpl implements StatusBarSleepImpl {
     }
 
     private void hookContext(final Class<?> statusBarClass) {
-        XposedBridge.hookAllConstructors(statusBarClass, new XC_MethodHook() {
-            @Override
-            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                if (gestureDetector == null || powerManager == null) {
-                    Context context = null;
-                    for (Object object : param.args) {
-                        if (object instanceof Context) {
-                            context = (Context) object;
-                            break;
-                        }
-                    }
-                    if (context != null) {
-                        gestureDetector = createGestureDetector(context);
-                        powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
-                        setupStatusBarManager(context);
-                    } else {
-                        XposedBridge.log("StatusBarSleep is unable to acquire context!");
-                    }
-                }
-            }
-        });
+        XposedBridge.hookAllConstructors(statusBarClass, new ContextHook());
     }
 
     private void setupStatusBarManager(Context context) {
@@ -109,17 +89,7 @@ public class BasicStatusBarSleepImpl implements StatusBarSleepImpl {
     }
 
     private ExtendedGestureDetector createGestureDetector(final Context context) {
-        return new ExtendedGestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
-            @Override
-            public boolean onDoubleTap(MotionEvent e) {
-                //Make sure first event is from the status bar
-                if(gestureDetector.isLastActionFromStatusBar()) {
-                    goToSleep();
-                    gestureDetector.resetTapStates();
-                }
-                return true;
-            }
-        });
+        return new ExtendedGestureDetector(context, new DoubleTapListener());
     }
 
     private void hookTouchEvent(Class<?> statusBarClass, Class<?> notificationClass) {
@@ -131,5 +101,39 @@ public class BasicStatusBarSleepImpl implements StatusBarSleepImpl {
 
     public ExtendedGestureDetector getGestureDetector() {
         return gestureDetector;
+    }
+
+    private class DoubleTapListener extends GestureDetector.SimpleOnGestureListener {
+        @Override
+        public boolean onDoubleTap(MotionEvent e) {
+            //Make sure first event is from the status bar
+            if(gestureDetector.isLastActionFromStatusBar() || BuildConfig.ENABLE_EXTENDED_TAP_TARGETS) {
+                goToSleep();
+                gestureDetector.resetTapStates();
+            }
+            return true;
+        }
+    }
+
+    private class ContextHook extends XC_MethodHook {
+        @Override
+        protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+            if (gestureDetector == null || powerManager == null) {
+                Context context = null;
+                for (Object object : param.args) {
+                    if (object instanceof Context) {
+                        context = (Context) object;
+                        break;
+                    }
+                }
+                if (context != null) {
+                    gestureDetector = createGestureDetector(context);
+                    powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+                    setupStatusBarManager(context);
+                } else {
+                    XposedBridge.log("StatusBarSleep is unable to acquire context!");
+                }
+            }
+        }
     }
 }

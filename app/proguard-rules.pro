@@ -15,3 +15,6 @@
 #-keepclassmembers class fqcn.of.javascript.interface.for.webview {
 #   public *;
 #}
+-keepnames class ** { *; }
+-keepattributes SourceFile,LineNumberTable,EnclosingMethod
+-keep class xyz.nulldev.statusbarsleep.StatusBarSleep { *; }
